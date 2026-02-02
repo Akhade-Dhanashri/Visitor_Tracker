@@ -153,7 +153,7 @@ def init_db():
                 INSERT INTO users (name, email, password, role, status)
                 VALUES (?, ?, ?, ?, ?)
             """, (name, email, password, role, status))
-            """, (name, email, password, role, status))  # Simplified for demo; use bcrypt in production
+
 
         print(f"SUCCESS: Seeded {len(users)} test users")
 
@@ -174,7 +174,6 @@ def init_db():
             execute_query(cursor, """
                 INSERT INTO visitors (name, email, phone, purpose, check_in_time, check_out_time, host_name, company)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """, (name, email, phone, purpose, check_in, check_out, host_name, company))
             """, (name, email, phone, purpose, check_in, check_out, host_name, company))
 
         print(f"SUCCESS: Seeded {len(visitors)} test visitors")
