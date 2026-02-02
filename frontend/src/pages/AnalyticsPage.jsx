@@ -24,85 +24,82 @@ const Analytics = () => {
     }
   };
 
-  const visitsTrendData = useMemo(() => {
-    const counts = {};
+  const filteredVisitors = useMemo(() => {
     const now = new Date();
-
-    // Define time ranges and aggregation formats
-    // Define time ranges and aggregation formats
     let startDate = new Date();
-    // Default to daily
-    let formatKey = (date) => date.toISOString().split('T')[0];
-    let labelFormat = (date_str) => new Date(date_str).toLocaleDateString('en-US', { day: '2-digit', month: 'short' });
 
     if (timePeriod === 'daily') {
-      startDate.setDate(now.getDate() - 30); // Last 30 days
-      // Formats already set above
+      startDate.setDate(now.getDate() - 30);
     } else if (timePeriod === 'monthly') {
-      startDate.setMonth(now.getMonth() - 12); // Last 12 months
-      formatKey = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`; // YYYY-MM
-      labelFormat = (date_str) => new Date(date_str + '-01').toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+      startDate.setMonth(now.getMonth() - 12);
     } else if (timePeriod === 'yearly') {
-      startDate.setFullYear(now.getFullYear() - 5); // Last 5 years
-      formatKey = (date) => `${date.getFullYear()}`; // YYYY
-      labelFormat = (date_str) => date_str;
-    } else if (timePeriod === 'alltime') {
+      startDate.setFullYear(now.getFullYear() - 5);
+    } else {
       startDate = new Date(0); // All time
-      // For all time, we can auto-choose based on data span, but let's stick to Monthly for better trends
-      formatKey = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-      labelFormat = (date_str) => new Date(date_str + '-01').toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
     }
 
-    const filteredVisitors = visitors.filter(v => {
+    return visitors.filter(v => {
       if (!v.check_in_time) return false;
       const date = new Date(v.check_in_time);
       return date >= startDate;
     });
+  }, [visitors, timePeriod]);
 
-    // Aggregate
+  const visitsTrendData = useMemo(() => {
+    const counts = {};
+
+    // Formatter helpers
+    let formatKey = (date) => date.toISOString().split('T')[0];
+    let labelFormat = (date_str) => new Date(date_str).toLocaleDateString('en-US', { day: '2-digit', month: 'short' });
+
+    if (timePeriod === 'monthly' || timePeriod === 'alltime') {
+      formatKey = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      labelFormat = (date_str) => new Date(date_str + '-01').toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+    } else if (timePeriod === 'yearly') {
+      formatKey = (date) => `${date.getFullYear()}`;
+      labelFormat = (date_str) => date_str;
+    }
+
     filteredVisitors.forEach((visitor) => {
       const date = new Date(visitor.check_in_time);
       const key = formatKey(date);
       counts[key] = (counts[key] || 0) + 1;
     });
 
-    // Fill in missing gaps for continuous timeline (optional but good for line charts)
-    // For simplicity, we just sort the available data keys
-    return Object.keys(counts).sort()
-      .map(key => ({
-        day: labelFormat(key),
-        visits: counts[key],
-        rawKey: key // for debugging or sorting
-      }));
-  }, [visitors, timePeriod]);
+    return Object.keys(counts).sort().map(key => ({
+      day: labelFormat(key),
+      visits: counts[key],
+      rawKey: key
+    }));
+  }, [filteredVisitors, timePeriod]);
 
   const visitorTypeData = useMemo(() => {
     const typeCounts = {};
-    visitors.forEach((visitor) => {
-      // Use 'purpose' or 'company' as category. Using 'purpose' might be better for "Visitor Type"
+    filteredVisitors.forEach((visitor) => {
       const type = visitor.purpose || 'General';
       typeCounts[type] = (typeCounts[type] || 0) + 1;
     });
 
-    const total = visitors.length;
+    const total = filteredVisitors.length;
+    if (total === 0) return [];
+
     return Object.entries(typeCounts).map(([name, count]) => ({
       name,
       value: Math.round((count / total) * 100),
       count,
     }));
-  }, [visitors]);
+  }, [filteredVisitors]);
 
   const dailyVisitsData = useMemo(() => {
     return visitsTrendData;
   }, [visitsTrendData]);
 
   const stats = useMemo(() => {
-    const totalVisits = visitors.length;
-    const currentlyInside = visitors.filter(v => !v.check_out_time).length;
-    const uniqueVisitors = new Set(visitors.map(v => v.email || v.phone)).size;
+    const totalVisits = filteredVisitors.length;
+    const currentlyInside = visitors.filter(v => !v.check_out_time).length; // Keep global for "Currently Inside"
+    const uniqueVisitors = new Set(filteredVisitors.map(v => v.email || v.phone)).size;
 
-    // Calculate average visit duration
-    const completedVisits = visitors.filter(v => v.check_out_time);
+    const completedVisits = filteredVisitors.filter(v => v.check_out_time);
     const avgDuration = completedVisits.length > 0
       ? completedVisits.reduce((sum, v) => {
         const duration = (new Date(v.check_out_time) - new Date(v.check_in_time)) / (1000 * 60);
@@ -110,13 +107,18 @@ const Analytics = () => {
       }, 0) / completedVisits.length
       : 0;
 
+    let periodLabel = 'All time';
+    if (timePeriod === 'daily') periodLabel = 'Last 30 days';
+    if (timePeriod === 'monthly') periodLabel = 'Last 12 months';
+    if (timePeriod === 'yearly') periodLabel = 'Last 5 years';
+
     return [
-      { label: 'Total Visits', value: totalVisits, detail: 'All time visits' },
-      { label: 'Unique Visitors', value: uniqueVisitors, detail: 'Different individuals' },
-      { label: 'Currently Inside', value: currentlyInside, detail: 'Not checked out' },
-      { label: 'Avg. Visit Duration', value: avgDuration > 0 ? `${Math.round(avgDuration)} min` : 'N/A', detail: 'Average time spent' },
+      { label: 'Total Visits', value: totalVisits, detail: periodLabel },
+      { label: 'Unique Visitors', value: uniqueVisitors, detail: 'In this period' },
+      { label: 'Currently Inside', value: currentlyInside, detail: 'Right now (Total)' },
+      { label: 'Avg. Visit Duration', value: avgDuration > 0 ? `${Math.round(avgDuration)} min` : 'N/A', detail: 'In this period' },
     ];
-  }, [visitors]);
+  }, [filteredVisitors, visitors, timePeriod]);
 
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
 
