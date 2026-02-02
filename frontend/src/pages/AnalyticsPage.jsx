@@ -47,28 +47,73 @@ const Analytics = () => {
 
   const visitsTrendData = useMemo(() => {
     const counts = {};
+    const now = new Date();
 
     // Formatter helpers
     let formatKey = (date) => date.toISOString().split('T')[0];
     let labelFormat = (date_str) => new Date(date_str).toLocaleDateString('en-US', { day: '2-digit', month: 'short' });
 
-    if (timePeriod === 'monthly' || timePeriod === 'alltime') {
+    // Helper to generate full range of keys
+    let generateKeys = () => {
+      const keys = [];
+      for (let i = 29; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(now.getDate() - i);
+        keys.push(formatKey(d));
+      }
+      return keys;
+    };
+
+    if (timePeriod === 'monthly') {
       formatKey = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
       labelFormat = (date_str) => new Date(date_str + '-01').toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+      generateKeys = () => {
+        const keys = [];
+        for (let i = 11; i >= 0; i--) {
+          const d = new Date();
+          d.setMonth(now.getMonth() - i);
+          keys.push(formatKey(d));
+        }
+        return keys;
+      };
     } else if (timePeriod === 'yearly') {
       formatKey = (date) => `${date.getFullYear()}`;
       labelFormat = (date_str) => date_str;
+      generateKeys = () => {
+        const keys = [];
+        for (let i = 4; i >= 0; i--) {
+          const d = new Date();
+          d.setFullYear(now.getFullYear() - i);
+          keys.push(formatKey(d));
+        }
+        return keys;
+      };
+    } else if (timePeriod === 'alltime') {
+      formatKey = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      labelFormat = (date_str) => new Date(date_str + '-01').toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+      // No backfill for all time, just show what we have
+      generateKeys = () => [];
     }
 
+    // 1. Aggregate actual data
     filteredVisitors.forEach((visitor) => {
       const date = new Date(visitor.check_in_time);
       const key = formatKey(date);
       counts[key] = (counts[key] || 0) + 1;
     });
 
-    return Object.keys(counts).sort().map(key => ({
+    // 2. Generate full timeline
+    let finalKeys = generateKeys();
+
+    // If alltime, use actual keys
+    if (timePeriod === 'alltime') {
+      finalKeys = Object.keys(counts).sort();
+    }
+
+    // 3. Map to array
+    return finalKeys.map(key => ({
       day: labelFormat(key),
-      visits: counts[key],
+      visits: counts[key] || 0,
       rawKey: key
     }));
   }, [filteredVisitors, timePeriod]);
