@@ -34,7 +34,7 @@ except ImportError:
 load_dotenv()
 
 app = Flask(__name__)
-CORS(app, resources={r"/api/*": {"origins": ["http://localhost:5173", "http://localhost:*"]}})
+CORS(app, resources={r"/api/*": {"origins": "*"}})
 
 # Database configuration
 # Database configuration
