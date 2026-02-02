@@ -29,14 +29,15 @@ const Analytics = () => {
     const now = new Date();
 
     // Define time ranges and aggregation formats
+    // Define time ranges and aggregation formats
     let startDate = new Date();
-    let formatKey = (date) => date.toDateString(); // Default daily
-    let labelFormat = (date_str) => new Date(date_str).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    // Default to daily
+    let formatKey = (date) => date.toISOString().split('T')[0];
+    let labelFormat = (date_str) => new Date(date_str).toLocaleDateString('en-US', { day: '2-digit', month: 'short' });
 
     if (timePeriod === 'daily') {
       startDate.setDate(now.getDate() - 30); // Last 30 days
-      formatKey = (date) => date.toISOString().split('T')[0]; // YYYY-MM-DD
-      labelFormat = (date_str) => new Date(date_str).toLocaleDateString('en-US', { day: '2-digit', month: 'short' });
+      // Formats already set above
     } else if (timePeriod === 'monthly') {
       startDate.setMonth(now.getMonth() - 12); // Last 12 months
       formatKey = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`; // YYYY-MM
@@ -45,8 +46,11 @@ const Analytics = () => {
       startDate.setFullYear(now.getFullYear() - 5); // Last 5 years
       formatKey = (date) => `${date.getFullYear()}`; // YYYY
       labelFormat = (date_str) => date_str;
-    } else {
+    } else if (timePeriod === 'alltime') {
       startDate = new Date(0); // All time
+      // For all time, we can auto-choose based on data span, but let's stick to Monthly for better trends
+      formatKey = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      labelFormat = (date_str) => new Date(date_str + '-01').toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
     }
 
     const filteredVisitors = visitors.filter(v => {
@@ -142,13 +146,18 @@ const Analytics = () => {
           <p>Visitor statistics and trends</p>
         </div>
         <div className="time-filter">
-          {['Daily', 'Monthly', 'Yearly', 'All Time'].map((period) => (
+          {[
+            { label: 'Daily', value: 'daily' },
+            { label: 'Monthly', value: 'monthly' },
+            { label: 'Yearly', value: 'yearly' },
+            { label: 'All Time', value: 'alltime' }
+          ].map((period) => (
             <button
-              key={period}
-              className={`filter-btn ${timePeriod === period.toLowerCase() ? 'active' : ''}`}
-              onClick={() => setTimePeriod(period.toLowerCase().replace(' ', ''))}
+              key={period.value}
+              className={`filter-btn ${timePeriod === period.value ? 'active' : ''}`}
+              onClick={() => setTimePeriod(period.value)}
             >
-              {period}
+              {period.label}
             </button>
           ))}
         </div>
