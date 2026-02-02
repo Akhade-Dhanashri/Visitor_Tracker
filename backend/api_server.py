@@ -24,6 +24,11 @@ from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter, landscape
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet
+try:
+    import psycopg2
+    from psycopg2.extras import RealDictCursor
+except ImportError:
+    psycopg2 = None
 
 # Load environment variables
 load_dotenv()
@@ -32,7 +37,51 @@ app = Flask(__name__)
 CORS(app, resources={r"/api/*": {"origins": ["http://localhost:5173", "http://localhost:*"]}})
 
 # Database configuration
+# Database configuration
 DB_FILE = os.getenv('DB_FILE', 'api_server.db')
+DATABASE_URL = os.getenv('DATABASE_URL')
+
+def get_db_connection():
+    """Get database connection (SQLite or Postgres)"""
+    if DATABASE_URL and psycopg2:
+        try:
+            conn = psycopg2.connect(DATABASE_URL)
+            return conn
+        except Exception as e:
+            print(f"Error connecting to Postgres: {e}")
+            # Fallback to SQLite if connection fails (or raise error in prod)
+            pass
+            
+    conn = sqlite3.connect(DB_FILE)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+def execute_query(cursor, query, params=None):
+    """Execute query handling placeholder differences"""
+    if params is None:
+        params = ()
+        
+    # Check if this is a psycopg2 cursor
+    is_postgres = hasattr(cursor, 'query') or (psycopg2 and isinstance(cursor, psycopg2.extensions.cursor))
+    
+    if is_postgres:
+        # Convert ? to %s for Postgres
+        # Note: This is a simple replacement. Complex queries might need careful handling.
+        query = query.replace('?', '%s')
+        cursor.execute(query, params)
+    else:
+        cursor.execute(query, params)
+
+def get_row_dict(row, cursor):
+    """Convert row to dict compatible with both drivers"""
+    if hasattr(row, 'keys'): # SQLite Row
+        return dict(row)
+    if isinstance(row, dict): # Psycopg2 RealDictCursor
+        return row
+    # Psycopg2 normal cursor (tuple) - need column names
+    col_names = [desc[0] for desc in cursor.description]
+    return dict(zip(col_names, row))
+
 
 # Email configuration
 SMTP_SERVER = os.getenv('SMTP_SERVER', 'smtp.gmail.com')
@@ -44,14 +93,22 @@ if not SMTP_EMAIL or not SMTP_PASSWORD:
     print("WARNING: Email credentials not set in .env file. Email sending will fail.")
 
 def init_db():
-    """Initialize SQLite database with users and visitors tables"""
-    conn = sqlite3.connect(DB_FILE)
+    """Initialize database tables"""
+    conn = get_db_connection()
+    
+    # Check if postgres
+    is_postgres = False
+    if psycopg2 and isinstance(conn, psycopg2.extensions.connection):
+        is_postgres = True
+        
     cursor = conn.cursor()
 
     # Create users table
-    cursor.execute("""
+    id_type = "SERIAL PRIMARY KEY" if is_postgres else "INTEGER PRIMARY KEY AUTOINCREMENT"
+    
+    execute_query(cursor, f"""
         CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id {id_type},
             name TEXT NOT NULL,
             email TEXT UNIQUE NOT NULL,
             password TEXT NOT NULL,
@@ -63,9 +120,9 @@ def init_db():
     """)
 
     # Create visitors table
-    cursor.execute("""
+    execute_query(cursor, f"""
         CREATE TABLE IF NOT EXISTS visitors (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id {id_type},
             name TEXT NOT NULL,
             email TEXT,
             phone TEXT,
@@ -80,7 +137,7 @@ def init_db():
     """)
 
     # Check if seed data exists
-    cursor.execute("SELECT COUNT(*) FROM users")
+    execute_query(cursor, "SELECT COUNT(*) FROM users")
     count = cursor.fetchone()[0]
 
     if count == 0:
@@ -92,15 +149,16 @@ def init_db():
         ]
 
         for name, email, password, role, status in users:
-            cursor.execute("""
+            execute_query(cursor, """
                 INSERT INTO users (name, email, password, role, status)
                 VALUES (?, ?, ?, ?, ?)
+            """, (name, email, password, role, status))
             """, (name, email, password, role, status))  # Simplified for demo; use bcrypt in production
 
         print(f"SUCCESS: Seeded {len(users)} test users")
 
     # Seed test visitors
-    cursor.execute("SELECT COUNT(*) FROM visitors")
+    execute_query(cursor, "SELECT COUNT(*) FROM visitors")
     visitor_count = cursor.fetchone()[0]
 
     if visitor_count == 0:
@@ -113,9 +171,10 @@ def init_db():
         ]
 
         for name, email, phone, purpose, check_in, check_out, host_name, company in visitors:
-            cursor.execute("""
+            execute_query(cursor, """
                 INSERT INTO visitors (name, email, phone, purpose, check_in_time, check_out_time, host_name, company)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """, (name, email, phone, purpose, check_in, check_out, host_name, company))
             """, (name, email, phone, purpose, check_in, check_out, host_name, company))
 
         print(f"SUCCESS: Seeded {len(visitors)} test visitors")
@@ -123,11 +182,7 @@ def init_db():
     conn.commit()
     conn.close()
 
-def get_db_connection():
-    """Get SQLite connection"""
-    conn = sqlite3.connect(DB_FILE)
-    conn.row_factory = sqlite3.Row
-    return conn
+# get_db_connection is verified above
 
 def validate_json(f):
     """Decorator to validate JSON requests"""
@@ -153,7 +208,7 @@ def login():
         cursor = conn.cursor()
         
         # In a real app, use bcrypt to verify hash. Here we compare plain text for demo simplicity as per seed data
-        cursor.execute("SELECT id, name, email, role, status FROM users WHERE email = ? AND password = ?", 
+        execute_query(cursor, "SELECT id, name, email, role, status FROM users WHERE email = ? AND password = ?", 
                       (data['email'], data['password']))
         user = cursor.fetchone()
         conn.close()
@@ -193,7 +248,7 @@ def change_password():
         cursor = conn.cursor()
         
         # Verify old password
-        cursor.execute("SELECT password FROM users WHERE id = ?", (user_id,))
+        execute_query(cursor, "SELECT password FROM users WHERE id = ?", (user_id,))
         user_row = cursor.fetchone()
         
         if not user_row:
@@ -208,7 +263,7 @@ def change_password():
             return jsonify({"error": "Incorrect current password"}), 401
             
         # Update password
-        cursor.execute("UPDATE users SET password = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?", 
+        execute_query(cursor, "UPDATE users SET password = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?", 
                       (new_password, user_id))
         conn.commit()
         conn.close()
@@ -232,7 +287,7 @@ def forgot_password():
         # Check if user exists
         conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute("SELECT id, name FROM users WHERE email = ?", (email,))
+        execute_query(cursor, "SELECT id, name FROM users WHERE email = ?", (email,))
         user = cursor.fetchone()
         conn.close()
         
@@ -304,7 +359,7 @@ def get_users():
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute("SELECT id, name, email, role, status, created_at, updated_at FROM users ORDER BY created_at DESC")
+        execute_query(cursor, "SELECT id, name, email, role, status, created_at, updated_at FROM users ORDER BY created_at DESC")
         users = cursor.fetchall()
         conn.close()
 
@@ -337,7 +392,7 @@ def create_user():
         conn = get_db_connection()
         cursor = conn.cursor()
 
-        cursor.execute("""
+        execute_query(cursor, """
             INSERT INTO users (name, email, password, role, status)
             VALUES (?, ?, ?, ?, ?)
         """, (
@@ -349,10 +404,10 @@ def create_user():
         ))
 
         conn.commit()
-        user_id = cursor.lastrowid
+        # id is available via lastrowid in sqlite, need separate handling for returning id in postgres
+        # For simple compatibility, we can query by email (unique)
         
-        # Fetch complete user record
-        cursor.execute("SELECT id, name, email, role, status, created_at, updated_at FROM users WHERE id = ?", (user_id,))
+        execute_query(cursor, "SELECT id, name, email, role, status, created_at, updated_at FROM users WHERE email = ?", (data['email'],))
         new_user = cursor.fetchone()
         conn.close()
 
@@ -374,7 +429,7 @@ def get_user(user_id):
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute("SELECT id, name, email, role, status, created_at, updated_at FROM users WHERE id = ?", (user_id,))
+        execute_query(cursor, "SELECT id, name, email, role, status, created_at, updated_at FROM users WHERE id = ?", (user_id,))
         user = cursor.fetchone()
         conn.close()
 
@@ -430,11 +485,11 @@ def update_user(user_id):
         update_fields.append("updated_at = CURRENT_TIMESTAMP")
         values.append(user_id)
 
-        cursor.execute(f"""
+        execute_query(cursor, f"""
             UPDATE users
             SET {', '.join(update_fields)}
             WHERE id = ?
-        """, values)
+        """, tuple(values))
 
         conn.commit()
 
@@ -455,7 +510,7 @@ def toggle_user_status(user_id):
         cursor = conn.cursor()
 
         # Get current status
-        cursor.execute("SELECT status FROM users WHERE id = ?", (user_id,))
+        execute_query(cursor, "SELECT status FROM users WHERE id = ?", (user_id,))
         user = cursor.fetchone()
 
         if not user:
@@ -464,7 +519,7 @@ def toggle_user_status(user_id):
 
         new_status = "Inactive" if user[0] == "Active" else "Active"
 
-        cursor.execute("""
+        execute_query(cursor, """
             UPDATE users
             SET status = ?, updated_at = CURRENT_TIMESTAMP
             WHERE id = ?
@@ -595,7 +650,7 @@ def delete_user(user_id):
         conn = get_db_connection()
         cursor = conn.cursor()
 
-        cursor.execute("DELETE FROM users WHERE id = ?", (user_id,))
+        execute_query(cursor, "DELETE FROM users WHERE id = ?", (user_id,))
         conn.commit()
 
         if cursor.rowcount == 0:
@@ -614,7 +669,7 @@ def get_visitors():
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute("SELECT * FROM visitors ORDER BY check_in_time DESC")
+        execute_query(cursor, "SELECT * FROM visitors ORDER BY check_in_time DESC")
         visitors = cursor.fetchall()
         conn.close()
 
@@ -651,7 +706,7 @@ def create_visitor():
         conn = get_db_connection()
         cursor = conn.cursor()
 
-        cursor.execute("""
+        execute_query(cursor, """
             INSERT INTO visitors (name, email, phone, purpose, host_name, company)
             VALUES (?, ?, ?, ?, ?, ?)
         """, (
@@ -664,10 +719,9 @@ def create_visitor():
         ))
 
         conn.commit()
-        visitor_id = cursor.lastrowid
-        
-        # Fetch the complete visitor record to return including timestamps
-        cursor.execute("SELECT * FROM visitors WHERE id = ?", (visitor_id,))
+        # Fetch mostly recently created visitor for this purpose and name
+        # (Avoiding lastrowid/returning for cross-db simplicity on insert only)
+        execute_query(cursor, "SELECT * FROM visitors WHERE name = ? AND purpose = ? ORDER BY id DESC LIMIT 1", (data['name'], data['purpose']))
         new_visitor = cursor.fetchone()
         conn.close()
 
@@ -693,7 +747,7 @@ def get_visitor(visitor_id):
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute("SELECT * FROM visitors WHERE id = ?", (visitor_id,))
+        execute_query(cursor, "SELECT * FROM visitors WHERE id = ?", (visitor_id,))
         visitor = cursor.fetchone()
         conn.close()
 
@@ -723,7 +777,7 @@ def checkout_visitor(visitor_id):
         conn = get_db_connection()
         cursor = conn.cursor()
 
-        cursor.execute("""
+        execute_query(cursor, """
             UPDATE visitors
             SET check_out_time = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
             WHERE id = ? AND check_out_time IS NULL
@@ -747,7 +801,7 @@ def delete_visitor(visitor_id):
         conn = get_db_connection()
         cursor = conn.cursor()
 
-        cursor.execute("DELETE FROM visitors WHERE id = ?", (visitor_id,))
+        execute_query(cursor, "DELETE FROM visitors WHERE id = ?", (visitor_id,))
         conn.commit()
 
         if cursor.rowcount == 0:
