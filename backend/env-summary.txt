@@ -1,0 +1,10 @@
+﻿
+APP_KEY=base64:u5Nm/TdsDpQzPByOUQP4Nkli+QnTLSfwl9718lJYqCc=
+DB_CONNECTION=sqlite
+# DB_HOST=127.0.0.1
+# DB_PORT=3306
+# DB_DATABASE=laravel
+# DB_USERNAME=root
+# DB_PASSWORD=
+
+

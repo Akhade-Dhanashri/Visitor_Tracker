@@ -1,0 +1,75 @@
+/* App Layout */
+.app-container {
+  display: flex;
+  min-height: 100vh;
+  background-color: var(--bg-main);
+}
+
+.app-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--spacing-lg);
+}
+
+@media (max-width: 768px) {
+  .app-container {
+    flex-direction: column;
+  }
+
+  .app-content {
+    padding: var(--spacing-md);
+  }
+}
+
+/* Card Styles */
+.card {
+  padding: var(--spacing-lg);
+  background-color: var(--bg-card);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--border-color);
+}
+
+/* Button Styles */
+.btn-primary {
+  background-color: #1F2937;
+  color: #FFFFFF;
+  padding: 12px 24px;
+  border: none;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  width: 100%;
+}
+
+.btn-primary:hover {
+  background-color: #111827;
+  box-shadow: var(--shadow-lg);
+}
+
+.btn-secondary {
+  background-color: #FFFFFF;
+  color: #1F2937;
+  border: 2px solid #E5E7EB;
+  padding: 12px 24px;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  width: 100%;
+}
+
+.btn-secondary:hover {
+  background-color: var(--bg-hover);
+  border-color: #D1D5DB;
+}
+
+/* Utility Classes */
+.logo {
+  height: 6em;
+  padding: 1.5em;
+  transition: filter 300ms;
+}

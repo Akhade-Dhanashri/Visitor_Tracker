@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: rachana_user
+      POSTGRES_PASSWORD: secret
+      POSTGRES_DB: rachana
+    volumes:
+      - ./backend/db-data:/var/lib/postgresql/data
+    networks:
+      - vt-net
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:80"
+    depends_on:
+      - db
+    environment:
+      - APP_ENV=local
+      - APP_DEBUG=true
+      - DB_CONNECTION=pgsql
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_DATABASE=rachana
+      - DB_USERNAME=rachana_user
+      - DB_PASSWORD=secret
+    volumes:
+      - ./backend:/var/www/html
+    command: ["bash","/var/www/html/docker-entrypoint.sh"]
+    networks:
+      - vt-net
+
+networks:
+  vt-net:
+    driver: bridge

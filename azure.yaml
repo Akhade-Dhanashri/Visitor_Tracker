@@ -1,0 +1,18 @@
+name: visitor-tracker
+metadata:
+  template: visitor-tracker@0.0.1
+services:
+  backend:
+    project: ./backend
+    language: php
+    host: containerapp
+    docker:
+      file: ./backend/Dockerfile
+      context: ./backend
+  frontend:
+    project: ./frontend
+    language: js
+    host: containerapp
+    docker:
+      file: ./frontend/Dockerfile
+      context: ./frontend
