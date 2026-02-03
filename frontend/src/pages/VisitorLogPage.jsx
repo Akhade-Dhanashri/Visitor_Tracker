@@ -60,7 +60,25 @@ const VisitorLog = () => {
       document.body.removeChild(a);
     } catch (error) {
       console.error('Error exporting data:', error);
-      alert('Failed to export data');
+      let errorMessage = 'Failed to export data';
+      if (error.response && error.response.data && error.response.data.error) {
+        errorMessage = error.response.data.error;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      // If it's a blob error, we might need to read it
+      if (error.response && error.response.data instanceof Blob) {
+        // It's a blob, but it might contain JSON error
+        const text = await error.response.data.text();
+        try {
+          const json = JSON.parse(text);
+          if (json.error) errorMessage = json.error;
+        } catch (e) {
+          // Not JSON
+        }
+      }
+
+      alert(errorMessage);
     } finally {
       setIsExporting(false);
     }
