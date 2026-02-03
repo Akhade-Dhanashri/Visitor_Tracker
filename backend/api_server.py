@@ -847,6 +847,15 @@ def index():
         }
     }), 200
 
+# Initialize database on startup (for both local and production Gunicorn)
+print("Initializing database...")
+try:
+    with app.app_context():
+        init_db()
+    print("SUCCESS: Database initialized")
+except Exception as e:
+    print(f"WARNING: Database initialization failed: {e}")
+
 if __name__ == "__main__":
     print("="*50)
     print("  Visitor Tracker Backend API Server")
