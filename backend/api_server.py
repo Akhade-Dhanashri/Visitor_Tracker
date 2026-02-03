@@ -312,7 +312,8 @@ def send_reset_email(to_email, user_name, reset_token):
     subject = "Password Reset - Rachana Visitor Tracker"
     
     # Create reset link
-    reset_link = f"http://localhost:5173/reset-password?token={reset_token}"
+    frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:5173')
+    reset_link = f"{frontend_url}/reset-password?token={reset_token}"
     
     body = f"""Hello {user_name},
 
