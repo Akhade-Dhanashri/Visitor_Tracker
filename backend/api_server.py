@@ -10,7 +10,7 @@ from flask_cors import CORS
 import sqlite3
 import os
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 from functools import wraps
 from dotenv import load_dotenv
 import smtplib
@@ -151,6 +151,20 @@ def init_db():
         )
     """)
     
+    # Check for reset_token columns and add if missing (DB Migration)
+    # This ensures deployment preserves existing users but adds new capabilities
+    try:
+        # Try to select the column to see if it exists
+        execute_query(cursor, "SELECT reset_token FROM users LIMIT 1")
+    except Exception:
+        # Column likely missing, add them
+        print("INFO: Migrating database - adding reset_token columns")
+        try:
+            execute_query(cursor, "ALTER TABLE users ADD COLUMN reset_token TEXT")
+            execute_query(cursor, "ALTER TABLE users ADD COLUMN reset_token_expiry DATETIME")
+        except Exception as e:
+            print(f"WARNING: Database migration failed (columns might ensure exist): {e}")
+
     # Ensure default settings exist
     execute_query(cursor, "SELECT COUNT(*) FROM settings")
     if cursor.fetchone()[0] == 0:
@@ -318,13 +332,20 @@ def forgot_password():
         if user:
             # Generate reset token
             reset_token = secrets.token_urlsafe(32)
+            expiry = datetime.now() + timedelta(hours=1)
+            
+            # Save token to DB
+            execute_query(cursor, """
+                UPDATE users SET reset_token = ?, reset_token_expiry = ? WHERE id = ?
+            """, (reset_token, expiry, user[0]))
+            conn.commit()
             
             # Send email
             try:
                 send_reset_email(email, user[1], reset_token)
             except Exception as e:
                 print(f"Email sending error: {e}")
-                # Still return success to user
+                # Still return success to user/log the error
         
         return jsonify({"message": "If email exists, reset link has been sent"}), 200
         
