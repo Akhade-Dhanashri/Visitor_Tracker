@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getVisitors } from '../api/api';
+import { getVisitors, downloadVisitorReport } from '../api/api';
 import '../styles/VisitorLog.css';
 
 const VisitorLog = () => {
@@ -7,6 +7,11 @@ const VisitorLog = () => {
   const [activeTab, setActiveTab] = useState('all');
   const [visitors, setVisitors] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // Download State
+  const [downloadStartDate, setDownloadStartDate] = useState('');
+  const [downloadEndDate, setDownloadEndDate] = useState('');
+  const [isExporting, setIsExporting] = useState(false);
 
   // Fetch visitors on mount
   useEffect(() => {
@@ -36,6 +41,31 @@ const VisitorLog = () => {
     return new Date(dateString).toLocaleDateString('en-US', options);
   };
 
+  const handleDownloadReport = async (format) => {
+    try {
+      setIsExporting(true);
+      const blob = await downloadVisitorReport(format, downloadStartDate, downloadEndDate);
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+
+      let extension = 'csv';
+      if (format === 'excel') extension = 'xlsx';
+      if (format === 'pdf') extension = 'pdf';
+
+      a.download = `visitor_report_${downloadStartDate || 'all'}_to_${downloadEndDate || 'all'}.${extension}`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error('Error exporting data:', error);
+      alert('Failed to export data');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   if (loading) {
     return <div className="loading-state">Loading visitor log...</div>;
   }
@@ -60,24 +90,56 @@ const VisitorLog = () => {
           <h1>Visitor Log</h1>
           <p>View historical visitor records</p>
         </div>
-        <div className="date-selector">
-          <button className="date-nav-btn" onClick={() => {
-            const d = new Date(selectedDate);
-            d.setDate(d.getDate() - 1);
-            setSelectedDate(d.toISOString().split('T')[0]);
-          }}>←</button>
-          <input
-            type="date"
-            value={selectedDate}
-            onChange={(e) => setSelectedDate(e.target.value)}
-            className="date-input"
-          />
-          <button className="date-nav-btn" onClick={() => {
-            const d = new Date(selectedDate);
-            d.setDate(d.getDate() + 1);
-            setSelectedDate(d.toISOString().split('T')[0]);
-          }}>→</button>
-          <button className="today-btn" onClick={() => setSelectedDate(new Date().toISOString().split('T')[0])}>Today</button>
+
+        <div className="header-actions" style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
+          <div className="download-controls" style={{
+            display: 'flex', gap: '0.5rem', alignItems: 'center',
+            backgroundColor: 'white', padding: '0.5rem', borderRadius: '8px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+          }}>
+            <span style={{ fontSize: '0.85rem', color: '#6b7280', fontWeight: 500 }}>Download:</span>
+            <input
+              type="date"
+              value={downloadStartDate}
+              onChange={(e) => setDownloadStartDate(e.target.value)}
+              className="date-input-small"
+              title="Start Date"
+              style={{ padding: '0.25rem', borderRadius: '4px', border: '1px solid #d1d5db', fontSize: '0.85rem' }}
+            />
+            <span style={{ color: '#9ca3af' }}>-</span>
+            <input
+              type="date"
+              value={downloadEndDate}
+              onChange={(e) => setDownloadEndDate(e.target.value)}
+              className="date-input-small"
+              title="End Date"
+              style={{ padding: '0.25rem', borderRadius: '4px', border: '1px solid #d1d5db', fontSize: '0.85rem' }}
+            />
+            <div className="btn-group-tiny" style={{ display: 'flex', gap: '2px' }}>
+              <button onClick={() => handleDownloadReport('csv')} disabled={isExporting} style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', backgroundColor: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: '4px 0 0 4px', cursor: 'pointer' }}>CSV</button>
+              <button onClick={() => handleDownloadReport('excel')} disabled={isExporting} style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', backgroundColor: '#f3f4f6', border: '1px solid #e5e7eb', borderLeft: 'none', cursor: 'pointer' }}>XLS</button>
+              <button onClick={() => handleDownloadReport('pdf')} disabled={isExporting} style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', backgroundColor: '#f3f4f6', border: '1px solid #e5e7eb', borderLeft: 'none', borderRadius: '0 4px 4px 0', cursor: 'pointer' }}>PDF</button>
+            </div>
+          </div>
+
+          <div className="date-selector">
+            <button className="date-nav-btn" onClick={() => {
+              const d = new Date(selectedDate);
+              d.setDate(d.getDate() - 1);
+              setSelectedDate(d.toISOString().split('T')[0]);
+            }}>←</button>
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="date-input"
+            />
+            <button className="date-nav-btn" onClick={() => {
+              const d = new Date(selectedDate);
+              d.setDate(d.getDate() + 1);
+              setSelectedDate(d.toISOString().split('T')[0]);
+            }}>→</button>
+            <button className="today-btn" onClick={() => setSelectedDate(new Date().toISOString().split('T')[0])}>Today</button>
+          </div>
         </div>
       </div>
 
