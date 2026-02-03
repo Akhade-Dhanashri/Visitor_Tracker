@@ -39,8 +39,12 @@ export const deleteVisitor = async (id) => {
   return response.data;
 };
 
-export const downloadVisitorReport = async (format = 'csv') => {
-  const response = await apiClient.get(`/visitors/report?format=${format}`, {
+export const downloadVisitorReport = async (format = 'csv', startDate = null, endDate = null) => {
+  let url = `/visitors/report?format=${format}`;
+  if (startDate) url += `&start_date=${startDate}`;
+  if (endDate) url += `&end_date=${endDate}`;
+
+  const response = await apiClient.get(url, {
     responseType: 'blob',
   });
   return response.data;
