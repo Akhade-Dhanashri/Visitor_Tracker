@@ -537,10 +537,32 @@ def download_visitor_report():
     """GET /api/visitors/report - Export visitor data as CSV, Excel, or PDF"""
     try:
         format_type = request.args.get('format', 'csv').lower()
+        start_date = request.args.get('start_date')
+        end_date = request.args.get('end_date')
         
         conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute("SELECT * FROM visitors ORDER BY check_in_time DESC")
+        
+        query = "SELECT * FROM visitors"
+        params = []
+        conditions = []
+        
+        if start_date:
+            conditions.append("check_in_time >= ?")
+            # Append time to start of day if just date, but assuming frontend sends YYYY-MM-DD
+            params.append(f"{start_date} 00:00:00")
+            
+        if end_date:
+            conditions.append("check_in_time <= ?")
+            # Append time to end of day
+            params.append(f"{end_date} 23:59:59")
+            
+        if conditions:
+            query += " WHERE " + " AND ".join(conditions)
+            
+        query += " ORDER BY check_in_time DESC"
+        
+        execute_query(cursor, query, tuple(params))
         visitors = cursor.fetchall()
         conn.close()
         
