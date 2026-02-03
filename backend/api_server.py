@@ -136,7 +136,31 @@ def init_db():
         )
     """)
 
+    # Create settings table
+    execute_query(cursor, f"""
+        CREATE TABLE IF NOT EXISTS settings (
+            id {id_type},
+            organization_name TEXT DEFAULT 'Rachana Girls Hostel',
+            email TEXT DEFAULT 'contact@rachana.org',
+            phone TEXT DEFAULT '+91 22 1234 5678',
+            push_notifications BOOLEAN DEFAULT 0,
+            email_notifications BOOLEAN DEFAULT 0,
+            auto_checkout BOOLEAN DEFAULT 0,
+            require_email BOOLEAN DEFAULT 0,
+            require_organization BOOLEAN DEFAULT 0
+        )
+    """)
+    
+    # Ensure default settings exist
+    execute_query(cursor, "SELECT COUNT(*) FROM settings")
+    if cursor.fetchone()[0] == 0:
+        execute_query(cursor, """
+            INSERT INTO settings (id, organization_name, email, phone) 
+            VALUES (1, 'Rachana Girls Hostel', 'contact@rachana.org', '+91 22 1234 5678')
+        """)
+
     # Check if seed data exists
+
     execute_query(cursor, "SELECT COUNT(*) FROM users")
     count = cursor.fetchone()[0]
 
@@ -832,6 +856,75 @@ def delete_visitor(visitor_id):
 
         conn.close()
         return jsonify({"message": "Visitor deleted successfully"}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# Settings endpoints
+@app.route("/api/settings", methods=["GET"])
+def get_settings():
+    """GET /api/settings - Get system settings"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        execute_query(cursor, "SELECT * FROM settings WHERE id = 1")
+        row = cursor.fetchone()
+        conn.close()
+        
+        if not row:
+            return jsonify({"error": "Settings not initialized"}), 500
+            
+        settings = {
+            "organizationName": row[1],
+            "email": row[2],
+            "phone": row[3],
+            "pushNotifications": bool(row[4]),
+            "emailNotifications": bool(row[5]),
+            "autoCheckout": bool(row[6]),
+            "requireEmail": bool(row[7]),
+            "requireOrganization": bool(row[8])
+        }
+        return jsonify(settings), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/settings", methods=["PUT"])
+@validate_json
+def update_settings():
+    """PUT /api/settings - Update system settings"""
+    try:
+        data = request.json
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Determine strictness of booleans based on DB type (Postgres needs explicit bools usually, SQLite 0/1)
+        # However, Python SQLite adapter handles bools as 0/1. Postgres adapter handles bools as True/False.
+        # execute_query abstraction handles some, but let's pass raw values and let driver handle.
+        
+        execute_query(cursor, """
+            UPDATE settings SET
+                organization_name = ?,
+                email = ?,
+                phone = ?,
+                push_notifications = ?,
+                email_notifications = ?,
+                auto_checkout = ?,
+                require_email = ?,
+                require_organization = ?
+            WHERE id = 1
+        """, (
+            data.get('organizationName'),
+            data.get('email'),
+            data.get('phone'),
+            data.get('pushNotifications'),
+            data.get('emailNotifications'),
+            data.get('autoCheckout'),
+            data.get('requireEmail'),
+            data.get('requireOrganization')
+        ))
+        
+        conn.commit()
+        conn.close()
+        return jsonify({"message": "Settings updated successfully"}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

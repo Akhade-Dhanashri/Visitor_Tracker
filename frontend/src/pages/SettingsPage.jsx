@@ -1,12 +1,12 @@
-import React, { useState } from 'react';
-import { changePassword, downloadVisitorReport } from '../api/api';
+import React, { useState, useEffect } from 'react';
+import { changePassword, downloadVisitorReport, getSettings, updateSettings } from '../api/api';
 import '../styles/Settings.css';
 
 const Settings = () => {
   const [settings, setSettings] = useState({
-    organizationName: 'Rachana Girls Hostel',
-    email: 'contact@rachana.org',
-    phone: '+91 22 1234 5678',
+    organizationName: '',
+    email: '',
+    phone: '',
     pushNotifications: false,
     emailNotifications: false,
     autoCheckout: false,
@@ -14,6 +14,7 @@ const Settings = () => {
     requireOrganization: false,
   });
 
+  const [loading, setLoading] = useState(true);
   const [savedMessage, setSavedMessage] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [passwordForm, setPasswordForm] = useState({
@@ -23,6 +24,22 @@ const Settings = () => {
   });
   const [passError, setPassError] = useState('');
 
+  // Fetch settings on load
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const data = await getSettings();
+        setSettings(data);
+      } catch (error) {
+        console.error('Failed to load settings:', error);
+        // Keep default empty state or show start
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchSettings();
+  }, []);
+
   const handleInputChange = (field, value) => {
     setSettings({ ...settings, [field]: value });
   };
@@ -31,9 +48,15 @@ const Settings = () => {
     setSettings({ ...settings, [field]: !settings[field] });
   };
 
-  const handleSaveChanges = () => {
-    setSavedMessage(true);
-    setTimeout(() => setSavedMessage(false), 3000);
+  const handleSaveChanges = async () => {
+    try {
+      await updateSettings(settings);
+      setSavedMessage(true);
+      setTimeout(() => setSavedMessage(false), 3000);
+    } catch (error) {
+      console.error('Failed to save settings:', error);
+      alert('Failed to save settings. Please try again.');
+    }
   };
 
   const handleChangePasswordClick = () => {

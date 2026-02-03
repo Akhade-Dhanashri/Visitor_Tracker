@@ -18,6 +18,17 @@ export const changePassword = async (data) => {
   return response.data;
 };
 
+// Settings
+export const getSettings = async () => {
+  const response = await apiClient.get('/settings');
+  return response.data;
+};
+
+export const updateSettings = async (settings) => {
+  const response = await apiClient.put('/settings', settings);
+  return response.data;
+};
+
 // Visitors
 export const getVisitors = async () => {
   const response = await apiClient.get('/visitors');
