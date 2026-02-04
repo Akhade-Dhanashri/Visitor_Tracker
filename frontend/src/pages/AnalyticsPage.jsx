@@ -57,8 +57,17 @@ const Analytics = () => {
     let generateKeys = () => []; // Default empty
 
     if (timePeriod === 'daily') {
-      // Daily (Today) - Single data point, NO hourly
-      generateKeys = () => [formatKey(now)];
+      // Hourly breakdown for Today
+      generateKeys = () => {
+        const keys = [];
+        for (let i = 0; i <= now.getHours(); i++) {
+          keys.push(`${i.toString().padStart(2, '0')}:00`);
+        }
+        return keys;
+      };
+      // Format key for data aggregation
+      formatKey = (date) => `${date.getHours().toString().padStart(2, '0')}:00`;
+      labelFormat = (key) => key;
     } else if (timePeriod === 'weekly') {
       // Daily breakdown (last 7 days)
       generateKeys = () => {
