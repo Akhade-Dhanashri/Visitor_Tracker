@@ -20,6 +20,11 @@ const LoginForm = ({ onLogin }) => {
 
       const user = await login({ email, password });
 
+      if (user.role !== 'admin' && user.role !== 'security') {
+        setError('Access denied. Restricted to Admin and Security personnel.');
+        return;
+      }
+
       localStorage.setItem('isLoggedIn', 'true');
       localStorage.setItem('userRole', user.role);
       localStorage.setItem('userId', user.id);
@@ -46,7 +51,7 @@ const LoginForm = ({ onLogin }) => {
 
         {/* Title */}
         <h1 className="login-title">Rachana Visitor Management</h1>
-        <p className="login-subtitle">Secure Visitor Access Portal</p>
+        <p className="login-subtitle">Authorized Access Only (Admin & Security)</p>
 
         {/* Form */}
         <form className="login-form" onSubmit={handleLogin}>
