@@ -6,7 +6,7 @@ import VisitorLogPage from './pages/VisitorLogPage.jsx';
 import AnalyticsPage from './pages/AnalyticsPage.jsx';
 import UserManagementPage from './pages/UserManagementPage.jsx';
 import SettingsPage from './pages/SettingsPage.jsx';
-import SignUpPage from './pages/SignUpPage.jsx';
+
 import ForgotPasswordPage from './pages/ForgotPasswordPage.jsx';
 
 import Sidebar from './components/Sidebar.jsx';
@@ -72,7 +72,6 @@ function App() {
               }
             />
             <Route path="/login" element={<Navigate to="/" replace />} />
-            <Route path="/signup" element={<SignUpPage />} />
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
             <Route
               path="/dashboard"
@@ -112,7 +111,11 @@ function App() {
               path="/user-management"
               element={
                 isAuthenticated ? (
-                  <UserManagementPage />
+                  userRole === 'admin' ? (
+                    <UserManagementPage />
+                  ) : (
+                    <Navigate to="/dashboard" replace />
+                  )
                 ) : (
                   <Navigate to="/login" replace />
                 )

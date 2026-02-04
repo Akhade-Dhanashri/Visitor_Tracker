@@ -178,10 +178,21 @@ def init_db():
     execute_query(cursor, "SELECT COUNT(*) FROM users")
     count = cursor.fetchone()[0]
 
+    # Always ensure the main admin exists, even if other users exist
+    admin_email = "akhadedhanashri@gmail.com"
+    execute_query(cursor, "SELECT id FROM users WHERE email = ?", (admin_email,))
+    existing_admin = cursor.fetchone()
+
+    if not existing_admin:
+        print(f"INFO: Creating main admin user {admin_email}")
+        execute_query(cursor, """
+            INSERT INTO users (name, email, password, role, status)
+            VALUES (?, ?, ?, ?, ?)
+        """, ("Admin Dhanashri", admin_email, "Dhanashri@2026", "admin", "Active"))
+    
     if count == 0:
         # Seed test users
         users = [
-            ("Admin User", "admin@rachana.org", "admin123", "admin", "Active"),
             ("Security Guard 1", "guard1@rachana.org", "guard123", "security", "Active"),
             ("Security Guard 2", "guard2@rachana.org", "guard123", "security", "Active"),
         ]
@@ -193,7 +204,7 @@ def init_db():
             """, (name, email, password, role, status))
 
 
-        print(f"SUCCESS: Seeded {len(users)} test users")
+        print(f"SUCCESS: Seeded test users")
 
     # Seed test visitors
     execute_query(cursor, "SELECT COUNT(*) FROM visitors")
@@ -351,6 +362,71 @@ def forgot_password():
         
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+@app.route("/api/reset-password", methods=["POST"])
+@validate_json
+def reset_password():
+    """POST /api/reset-password - Reset password using token"""
+    try:
+        data = request.json
+        token = data.get('token')
+        new_password = data.get('new_password')
+        
+        if not token or not new_password:
+            return jsonify({"error": "Token and new password are required"}), 400
+            
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Verify token in DB
+        # SQLite returns columns by index
+        reset_token_col = "reset_token"
+        execute_query(cursor, "SELECT id, reset_token_expiry FROM users WHERE reset_token = ?", (token,))
+        user = cursor.fetchone()
+        
+        if not user:
+            conn.close()
+            return jsonify({"error": "Invalid or expired token"}), 400
+            
+        # Check expiry
+        expiry_str = user[1] 
+        
+        # Parse timestamp
+        if isinstance(expiry_str, str):
+            try:
+                 expiry = datetime.fromisoformat(expiry_str)
+            except ValueError:
+                 try:
+                    expiry = datetime.strptime(expiry_str, '%Y-%m-%d %H:%M:%S.%f')
+                 except:
+                    try:
+                        expiry = datetime.strptime(expiry_str, '%Y-%m-%d %H:%M:%S')
+                    except:
+                        # Last ditch effort for other formats? Or just fail safely
+                        conn.close()
+                        return jsonify({"error": "Token expiry format error"}), 500
+        else:
+            expiry = expiry_str
+
+        if datetime.now() > expiry:
+            conn.close()
+            return jsonify({"error": "Token has expired"}), 400
+            
+        # Update password
+        execute_query(cursor, """
+            UPDATE users 
+            SET password = ?, reset_token = NULL, reset_token_expiry = NULL, updated_at = CURRENT_TIMESTAMP 
+            WHERE id = ?
+        """, (new_password, user[0]))
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({"message": "Password has been reset successfully"}), 200
+        
+    except Exception as e:
+        print(f"Reset password error: {e}")
+        return jsonify({"error": "Failed to reset password"}), 500
 
 def send_reset_email(to_email, user_name, reset_token):
     """Send password reset email via Gmail SMTP"""

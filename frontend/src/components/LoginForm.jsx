@@ -118,10 +118,7 @@ const LoginForm = ({ onLogin }) => {
           {/* Account Options */}
           {/* Account Options */}
           <div className="account-options">
-            <div className="option-item">
-              <span className="option-text">New user?</span>
-              <Link to="/signup" className="option-link">Create Account</Link>
-            </div>
+
             <div className="option-item">
               <Link to="/forgot-password" className="option-link">Forgot Password?</Link>
             </div>

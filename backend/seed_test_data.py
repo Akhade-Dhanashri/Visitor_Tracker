@@ -29,9 +29,9 @@ def seed_test_data():
         # Create test users
         test_users = [
             {
-                'name': 'Admin User',
-                'email': 'admin@rachana.org',
-                'password': 'admin123',  # Will be hashed by Laravel
+                'name': 'Admin Dhanashri',
+                'email': 'akhadedhanashri@gmail.com',
+                'password': 'Dhanashri@2026',  # Will be hashed by Laravel
                 'role': 'admin',
                 'status': 'Active'
             },
