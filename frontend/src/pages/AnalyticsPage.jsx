@@ -4,7 +4,7 @@ import { getVisitors, checkoutVisitor } from '../api/api';
 import '../styles/Analytics.css';
 
 const Analytics = () => {
-  const [timePeriod, setTimePeriod] = useState('daily');
+  const [timePeriod, setTimePeriod] = useState('weekly');
   const [visitors, setVisitors] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -26,16 +26,18 @@ const Analytics = () => {
 
   const filteredVisitors = useMemo(() => {
     const now = new Date();
-    let startDate = new Date();
+    const startDate = new Date();
 
-    if (timePeriod === 'daily') {
-      startDate.setDate(now.getDate() - 30);
+    if (timePeriod === 'today') {
+      startDate.setHours(0, 0, 0, 0); // Start of today
+    } else if (timePeriod === 'weekly') {
+      startDate.setDate(now.getDate() - 7); // Last 7 days
     } else if (timePeriod === 'monthly') {
-      startDate.setMonth(now.getMonth() - 12);
+      startDate.setMonth(now.getMonth() - 1); // Last 30 days (approx)
     } else if (timePeriod === 'yearly') {
-      startDate.setFullYear(now.getFullYear() - 5);
+      startDate.setFullYear(now.getFullYear() - 1); // Last 12 months
     } else {
-      startDate = new Date(0); // All time
+      startDate.setTime(0); // All time
     }
 
     return visitors.filter(v => {
@@ -49,22 +51,46 @@ const Analytics = () => {
     const counts = {};
     const now = new Date();
 
-    // Formatter helpers
+    // Default Formatters (Daily)
     let formatKey = (date) => date.toISOString().split('T')[0];
     let labelFormat = (date_str) => new Date(date_str).toLocaleDateString('en-US', { day: '2-digit', month: 'short' });
+    let generateKeys = () => []; // Default empty
 
-    // Helper to generate full range of keys
-    let generateKeys = () => {
-      const keys = [];
-      for (let i = 29; i >= 0; i--) {
-        const d = new Date();
-        d.setDate(now.getDate() - i);
-        keys.push(formatKey(d));
-      }
-      return keys;
-    };
-
-    if (timePeriod === 'monthly') {
+    if (timePeriod === 'today') {
+      // Hourly breakdown
+      formatKey = (date) => `${date.getHours().toString().padStart(2, '0')}:00`;
+      labelFormat = (key) => key;
+      generateKeys = () => {
+        const keys = [];
+        for (let i = 0; i < 24; i++) {
+          keys.push(`${i.toString().padStart(2, '0')}:00`);
+        }
+        return keys;
+      };
+    } else if (timePeriod === 'weekly') {
+      // Daily breakdown (last 7 days)
+      generateKeys = () => {
+        const keys = [];
+        for (let i = 6; i >= 0; i--) {
+          const d = new Date();
+          d.setDate(now.getDate() - i);
+          keys.push(formatKey(d));
+        }
+        return keys;
+      };
+    } else if (timePeriod === 'monthly') {
+      // Daily breakdown (last 30 days)
+      generateKeys = () => {
+        const keys = [];
+        for (let i = 29; i >= 0; i--) {
+          const d = new Date();
+          d.setDate(now.getDate() - i);
+          keys.push(formatKey(d));
+        }
+        return keys;
+      };
+    } else if (timePeriod === 'yearly') {
+      // Monthly breakdown
       formatKey = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
       labelFormat = (date_str) => new Date(date_str + '-01').toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
       generateKeys = () => {
@@ -76,23 +102,15 @@ const Analytics = () => {
         }
         return keys;
       };
-    } else if (timePeriod === 'yearly') {
-      formatKey = (date) => `${date.getFullYear()}`;
-      labelFormat = (date_str) => date_str;
-      generateKeys = () => {
-        const keys = [];
-        for (let i = 4; i >= 0; i--) {
-          const d = new Date();
-          d.setFullYear(now.getFullYear() - i);
-          keys.push(formatKey(d));
-        }
-        return keys;
-      };
     } else if (timePeriod === 'alltime') {
       formatKey = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
       labelFormat = (date_str) => new Date(date_str + '-01').toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-      // No backfill for all time, just show what we have
-      generateKeys = () => [];
+      generateKeys = () => {
+        if (filteredVisitors.length === 0) return [];
+        const sorted = [...filteredVisitors].sort((a, b) => new Date(a.check_in_time) - new Date(b.check_in_time));
+        // Just return actual keys present for simplicity in all-time
+        return [];
+      };
     }
 
     // 1. Aggregate actual data
@@ -105,8 +123,8 @@ const Analytics = () => {
     // 2. Generate full timeline
     let finalKeys = generateKeys();
 
-    // If alltime, use actual keys
-    if (timePeriod === 'alltime') {
+    // If alltime (or fallback), use actual keys
+    if (finalKeys.length === 0) {
       finalKeys = Object.keys(counts).sort();
     }
 
@@ -153,9 +171,10 @@ const Analytics = () => {
       : 0;
 
     let periodLabel = 'All time';
-    if (timePeriod === 'daily') periodLabel = 'Last 30 days';
-    if (timePeriod === 'monthly') periodLabel = 'Last 12 months';
-    if (timePeriod === 'yearly') periodLabel = 'Last 5 years';
+    if (timePeriod === 'today') periodLabel = 'Today';
+    if (timePeriod === 'weekly') periodLabel = 'Last 7 days';
+    if (timePeriod === 'monthly') periodLabel = 'Last 30 days';
+    if (timePeriod === 'yearly') periodLabel = 'Last 12 months';
 
     return [
       { label: 'Total Visits', value: totalVisits, detail: periodLabel },
@@ -194,7 +213,8 @@ const Analytics = () => {
         </div>
         <div className="time-filter">
           {[
-            { label: 'Daily', value: 'daily' },
+            { label: 'Today', value: 'today' },
+            { label: 'Weekly', value: 'weekly' },
             { label: 'Monthly', value: 'monthly' },
             { label: 'Yearly', value: 'yearly' },
             { label: 'All Time', value: 'alltime' }
