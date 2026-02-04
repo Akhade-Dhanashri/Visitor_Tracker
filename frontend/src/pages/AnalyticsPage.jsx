@@ -28,7 +28,7 @@ const Analytics = () => {
     const now = new Date();
     const startDate = new Date();
 
-    if (timePeriod === 'today') {
+    if (timePeriod === 'daily') {
       startDate.setHours(0, 0, 0, 0); // Start of today
     } else if (timePeriod === 'weekly') {
       startDate.setDate(now.getDate() - 7); // Last 7 days
@@ -56,7 +56,7 @@ const Analytics = () => {
     let labelFormat = (date_str) => new Date(date_str).toLocaleDateString('en-US', { day: '2-digit', month: 'short' });
     let generateKeys = () => []; // Default empty
 
-    if (timePeriod === 'today') {
+    if (timePeriod === 'daily') {
       // Hourly breakdown
       formatKey = (date) => `${date.getHours().toString().padStart(2, '0')}:00`;
       labelFormat = (key) => key;
@@ -171,7 +171,7 @@ const Analytics = () => {
       : 0;
 
     let periodLabel = 'All time';
-    if (timePeriod === 'today') periodLabel = 'Today';
+    if (timePeriod === 'daily') periodLabel = 'Today';
     if (timePeriod === 'weekly') periodLabel = 'Last 7 days';
     if (timePeriod === 'monthly') periodLabel = 'Last 30 days';
     if (timePeriod === 'yearly') periodLabel = 'Last 12 months';
@@ -213,7 +213,7 @@ const Analytics = () => {
         </div>
         <div className="time-filter">
           {[
-            { label: 'Today', value: 'today' },
+            { label: 'Daily', value: 'daily' },
             { label: 'Weekly', value: 'weekly' },
             { label: 'Monthly', value: 'monthly' },
             { label: 'Yearly', value: 'yearly' },
