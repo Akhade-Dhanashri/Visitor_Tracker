@@ -226,6 +226,44 @@ def validate_json(f):
         return f(*args, **kwargs)
     return decorated_function
 
+# Health Check
+@app.route("/api/health", methods=["GET"])
+def health_check():
+    """GET /api/health - Check API status and DB connection"""
+    conn = get_db_connection()
+    is_postgres = False
+    
+    # Check robustly explicitly imported library or connection type
+    if 'psycopg2' in str(type(conn)):
+         is_postgres = True
+    elif hasattr(conn, 'info') and conn.info.dsn_parameters:
+         is_postgres = True
+
+    db_type = "PostgreSQL" if is_postgres else "SQLite"
+    
+    # Get counts
+    cursor = conn.cursor()
+    try:
+        execute_query(cursor, "SELECT COUNT(*) FROM users")
+        user_count = cursor.fetchone()[0]
+        execute_query(cursor, "SELECT COUNT(*) FROM visitors")
+        visitor_count = cursor.fetchone()[0]
+    except:
+        user_count = -1
+        visitor_count = -1
+    finally:
+        conn.close()
+
+    return jsonify({
+        "status": "ok",
+        "database": db_type,
+        "database_url_present": bool(os.getenv('DATABASE_URL')),
+        "counts": {
+            "users": user_count,
+            "visitors": visitor_count
+        }
+    }), 200
+
 # Auth endpoints
 @app.route("/api/login", methods=["POST"])
 @validate_json
