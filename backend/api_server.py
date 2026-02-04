@@ -39,7 +39,8 @@ CORS(app, resources={r"/api/*": {"origins": "*"}})
 # Database configuration
 # Database configuration
 DB_FILE = os.getenv('DB_FILE', 'api_server.db')
-DATABASE_URL = os.getenv('DATABASE_URL')
+# Support both standard naming and the specific case-sensitive typo user made
+DATABASE_URL = os.getenv('DATABASE_URL') or os.getenv('Database_URL')
 
 def get_db_connection():
     """Get database connection (Strict PostgreSQL Only)"""
@@ -226,7 +227,8 @@ def validate_json(f):
 @app.route("/api/health", methods=["GET"])
 def health_check():
     """GET /api/health - Check API status and DB connection"""
-    db_url_present = bool(os.getenv('DATABASE_URL'))
+    # Check both standard and typo versions
+    db_url_present = bool(os.getenv('DATABASE_URL') or os.getenv('Database_URL'))
     is_postgres = False
     
     # Try connecting safely
