@@ -43,10 +43,16 @@ DATABASE_URL = os.getenv('DATABASE_URL')
 
 def get_db_connection():
     """Get database connection (SQLite or Postgres)"""
-    if DATABASE_URL and psycopg2:
+    if DATABASE_URL:
         try:
-            conn = psycopg2.connect(DATABASE_URL)
-            return conn
+            # Render provides 'postgres://' but newer libraries often expect 'postgresql://'
+            # Although psycopg2 usually handles postgres://, it's safer to standardize if using alchemy in future
+            # But for raw psycopg2, postgres:// is fine.
+            if psycopg2:
+                conn = psycopg2.connect(DATABASE_URL)
+                return conn
+            else:
+                print("WARNING: DATABASE_URL present but psycopg2 not installed. Falling back to SQLite.")
         except Exception as e:
             print(f"Error connecting to Postgres: {e}")
             # Fallback to SQLite if connection fails (or raise error in prod)
@@ -98,8 +104,14 @@ def init_db():
     
     # Check if postgres
     is_postgres = False
-    if psycopg2 and isinstance(conn, psycopg2.extensions.connection):
+    if psycopg2 and hasattr(conn, 'info') and conn.info.dsn_parameters:
         is_postgres = True
+        print(f"INFO: Initializing PostgreSQL database")
+    elif psycopg2 and isinstance(conn, psycopg2.extensions.connection):
+         is_postgres = True
+         print(f"INFO: Initializing PostgreSQL database")
+    else:
+        print(f"INFO: Initializing SQLite database")
         
     cursor = conn.cursor()
 
