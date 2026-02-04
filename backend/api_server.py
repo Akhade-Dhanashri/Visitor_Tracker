@@ -100,15 +100,10 @@ def init_db():
     conn = get_db_connection()
     
     # Check if postgres
-    is_postgres = False
-    if psycopg2 and hasattr(conn, 'info') and conn.info.dsn_parameters:
-        is_postgres = True
-        print(f"INFO: Initializing PostgreSQL database")
-    elif psycopg2 and isinstance(conn, psycopg2.extensions.connection):
-         is_postgres = True
-         print(f"INFO: Initializing PostgreSQL database")
-    else:
-        print(f"INFO: Initializing SQLite database")
+    # Since we enforce DATABASE_URL and psycopg2 in get_db_connection, 
+    # we can assume it is Postgres. Using AUTOINCREMENT will fail on Postgres.
+    is_postgres = True
+    print(f"INFO: Initializing PostgreSQL database (Strict Mode)")
         
     cursor = conn.cursor()
 
@@ -260,7 +255,7 @@ def health_check():
         "database_type": db_type,
         "connection_status": db_status,
         "database_url_present": db_url_present,
-        "psycopg2_installed": bool(psycopg2) if 'psycopg2' in locals() else False,
+        "psycopg2_installed": bool(psycopg2),
         "counts": {
             "users": user_count,
             "visitors": visitor_count
