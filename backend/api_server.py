@@ -226,34 +226,39 @@ def validate_json(f):
 @app.route("/api/health", methods=["GET"])
 def health_check():
     """GET /api/health - Check API status and DB connection"""
-    conn = get_db_connection()
+    db_url_present = bool(os.getenv('DATABASE_URL'))
     is_postgres = False
     
-    # Check robustly explicitly imported library or connection type
-    if 'psycopg2' in str(type(conn)):
-         is_postgres = True
-    elif hasattr(conn, 'info') and conn.info.dsn_parameters:
-         is_postgres = True
-
-    db_type = "PostgreSQL" if is_postgres else "SQLite"
-    
-    # Get counts
-    cursor = conn.cursor()
+    # Try connecting safely
     try:
+        conn = get_db_connection()
+        # Check robustly explicitly imported library or connection type
+        if 'psycopg2' in str(type(conn)):
+             is_postgres = True
+        elif hasattr(conn, 'info') and conn.info.dsn_parameters:
+             is_postgres = True
+             
+        cursor = conn.cursor()
         execute_query(cursor, "SELECT COUNT(*) FROM users")
         user_count = cursor.fetchone()[0]
         execute_query(cursor, "SELECT COUNT(*) FROM visitors")
         visitor_count = cursor.fetchone()[0]
-    except:
+        conn.close()
+        db_status = "Connected"
+    except Exception as e:
         user_count = -1
         visitor_count = -1
-    finally:
-        conn.close()
+        db_status = f"Error: {str(e)}"
 
+    db_type = "PostgreSQL" if is_postgres else "SQLite (If Fallback Enabled)"
+    
+    # Return 200 even if DB fails, so we can see the JSON diagnostic
     return jsonify({
         "status": "ok",
-        "database": db_type,
-        "database_url_present": bool(os.getenv('DATABASE_URL')),
+        "database_type": db_type,
+        "connection_status": db_status,
+        "database_url_present": db_url_present,
+        "psycopg2_installed": bool(psycopg2) if 'psycopg2' in locals() else False,
         "counts": {
             "users": user_count,
             "visitors": visitor_count
@@ -1047,15 +1052,7 @@ def update_settings():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-# Health check endpoint
-@app.route("/api/health", methods=["GET"])
-def health():
-    """GET /api/health - Server health check"""
-    return jsonify({
-        "status": "ok",
-        "message": "Visitor Tracker API Server",
-        "version": "1.0.0"
-    }), 200
+
 
 # Static file serving for docs
 @app.route("/", methods=["GET"])
