@@ -7,7 +7,6 @@ const LoginForm = ({ onLogin }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const [selectedRole, setSelectedRole] = useState('admin');
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -48,26 +47,6 @@ const LoginForm = ({ onLogin }) => {
         {/* Title */}
         <h1 className="login-title">Rachana Visitor Management</h1>
         <p className="login-subtitle">Secure Visitor Access Portal</p>
-
-        {/* Role Selection */}
-        <div className="role-selector">
-          <button
-            type="button"
-            className={`role-tab ${selectedRole === 'admin' ? 'active' : ''}`}
-            onClick={() => setSelectedRole('admin')}
-          >
-            <span className="role-icon">👤</span>
-            Admin Login
-          </button>
-          <button
-            type="button"
-            className={`role-tab ${selectedRole === 'security' ? 'active' : ''}`}
-            onClick={() => setSelectedRole('security')}
-          >
-            <span className="role-icon">🛡️</span>
-            Security Login
-          </button>
-        </div>
 
         {/* Form */}
         <form className="login-form" onSubmit={handleLogin}>
