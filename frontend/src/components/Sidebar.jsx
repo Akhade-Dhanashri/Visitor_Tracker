@@ -7,6 +7,7 @@ const Sidebar = ({ onLogout, userRole }) => {
 
   const menuItems = [
     { path: '/dashboard', label: 'Dashboard', icon: '📊', roles: ['admin', 'security'] },
+    { path: '/visitor-entry', label: 'Visitor Entry', icon: '🛡️', roles: ['admin'] },
     { path: '/visitor-log', label: 'Visitor Log', icon: '📋', roles: ['admin', 'security'] },
     { path: '/analytics', label: 'Analytics', icon: '📈', roles: ['admin'] },
     { path: '/user-management', label: 'User Management', icon: '👥', roles: ['admin'] },

@@ -131,6 +131,16 @@ function App() {
                 )
               }
             />
+            <Route
+              path="/visitor-entry"
+              element={
+                isAuthenticated ? (
+                  <SecurityDashboardPage />
+                ) : (
+                  <Navigate to="/login" replace />
+                )
+              }
+            />
           </Routes>
         </div>
       </div>
