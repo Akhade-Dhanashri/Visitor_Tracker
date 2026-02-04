@@ -186,7 +186,6 @@ def init_db():
         """)
 
     # Check if seed data exists
-
     execute_query(cursor, "SELECT COUNT(*) FROM users")
     count = cursor.fetchone()[0]
 
@@ -202,42 +201,16 @@ def init_db():
             VALUES (?, ?, ?, ?, ?)
         """, ("Admin Dhanashri", admin_email, "Dhanashri@2026", "admin", "Active"))
     
+    # Run comprehensive seeder if users are empty (first run)
     if count == 0:
-        # Seed test users
-        users = [
-            ("Security Guard 1", "guard1@rachana.org", "guard123", "security", "Active"),
-            ("Security Guard 2", "guard2@rachana.org", "guard123", "security", "Active"),
-        ]
-
-        for name, email, password, role, status in users:
-            execute_query(cursor, """
-                INSERT INTO users (name, email, password, role, status)
-                VALUES (?, ?, ?, ?, ?)
-            """, (name, email, password, role, status))
-
-
-        print(f"SUCCESS: Seeded test users")
-
-    # Seed test visitors
-    execute_query(cursor, "SELECT COUNT(*) FROM visitors")
-    visitor_count = cursor.fetchone()[0]
-
-    if visitor_count == 0:
-        # Seed test visitors
-        visitors = [
-            ("John Doe", "john@example.com", "1234567890", "Meeting", "2023-11-01 09:00:00", "2023-11-01 10:00:00", "Jane Smith", "ABC Corp"),
-            ("Alice Johnson", "alice@example.com", "0987654321", "Interview", "2023-11-01 14:00:00", "2023-11-01 15:30:00", "Bob Wilson", "XYZ Ltd"),
-            ("Mike Brown", "mike@example.com", "1122334455", "Delivery", "2023-11-02 11:00:00", None, "Sarah Davis", "Delivery Co"),
-            ("Emma Wilson", "emma@example.com", "5566778899", "Training", "2023-11-02 16:00:00", "2023-11-02 18:00:00", "Tom Harris", "Tech Solutions"),
-        ]
-
-        for name, email, phone, purpose, check_in, check_out, host_name, company in visitors:
-            execute_query(cursor, """
-                INSERT INTO visitors (name, email, phone, purpose, check_in_time, check_out_time, host_name, company)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """, (name, email, phone, purpose, check_in, check_out, host_name, company))
-
-        print(f"SUCCESS: Seeded {len(visitors)} test visitors")
+        print("INFO: Database appears empty. Running comprehensive seed data...")
+        try:
+            # We import here to avoid circular dependencies at top level if any
+            from seed_test_data import seed_test_data
+            seed_test_data()
+            print("SUCCESS: Seeded test users and visitors")
+        except Exception as e:
+            print(f"ERROR: Failed to run seeder: {e}")
 
     conn.commit()
     conn.close()
