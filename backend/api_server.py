@@ -42,25 +42,21 @@ DB_FILE = os.getenv('DB_FILE', 'api_server.db')
 DATABASE_URL = os.getenv('DATABASE_URL')
 
 def get_db_connection():
-    """Get database connection (SQLite or Postgres)"""
-    if DATABASE_URL:
-        try:
-            # Render provides 'postgres://' but newer libraries often expect 'postgresql://'
-            # Although psycopg2 usually handles postgres://, it's safer to standardize if using alchemy in future
-            # But for raw psycopg2, postgres:// is fine.
-            if psycopg2:
-                conn = psycopg2.connect(DATABASE_URL)
-                return conn
-            else:
-                print("WARNING: DATABASE_URL present but psycopg2 not installed. Falling back to SQLite.")
-        except Exception as e:
-            print(f"Error connecting to Postgres: {e}")
-            # Fallback to SQLite if connection fails (or raise error in prod)
-            pass
-            
-    conn = sqlite3.connect(DB_FILE)
-    conn.row_factory = sqlite3.Row
-    return conn
+    """Get database connection (Strict PostgreSQL Only)"""
+    if not DATABASE_URL:
+        # Halt execution if NO DB URL is present
+        raise RuntimeError("CRITICAL ERROR: DATABASE_URL environment variable is not set. Application cannot start without a PostgreSQL database (SQLite fallback disabled to prevent data loss).")
+        
+    if not psycopg2:
+        # Halt execution if driver is missing
+        raise RuntimeError("CRITICAL ERROR: psycopg2 driver not installed. Cannot connect to PostgreSQL.")
+
+    try:
+        conn = psycopg2.connect(DATABASE_URL)
+        return conn
+    except Exception as e:
+        print(f"CRITICAL ERROR: Failed to connect to PostgreSQL: {e}")
+        raise RuntimeError(f"Database connection failed: {e}")
 
 def execute_query(cursor, query, params=None):
     """Execute query handling placeholder differences"""
