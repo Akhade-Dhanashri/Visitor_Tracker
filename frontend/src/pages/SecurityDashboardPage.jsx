@@ -9,9 +9,107 @@ const SecurityDashboard = ({ adminView = false }) => {
   const [visitors, setVisitors] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // ... (rest of state)
+  const [visitorForm, setVisitorForm] = useState({
+    firstName: '',
+    lastName: '',
+    mobile: '',
+    email: '',
+    organisation: '',
+    visitorType: 'Parent',
+    purpose: '',
+  });
+  const [searchTerm, setSearchTerm] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
 
-  // ... (useEffect and handlers)
+  // Search logic
+  useEffect(() => {
+    if (!searchTerm.trim()) {
+      setSearchResults([]);
+      return;
+    }
+
+    const term = searchTerm.toLowerCase();
+    const uniqueVisitors = new Map();
+
+    visitors.forEach(v => {
+      // Create a unique key based on email or phone or name
+      const key = v.email || v.phone || v.name;
+      if (!uniqueVisitors.has(key)) {
+        if (
+          (v.name && v.name.toLowerCase().includes(term)) ||
+          (v.email && v.email.toLowerCase().includes(term)) ||
+          (v.phone && v.phone.includes(term))
+        ) {
+          uniqueVisitors.set(key, v);
+        }
+      }
+    });
+
+    setSearchResults(Array.from(uniqueVisitors.values()).slice(0, 5));
+  }, [searchTerm, visitors]);
+
+  const handleSelectVisitor = (visitor) => {
+    // Splits name into First/Last if possible
+    const nameParts = visitor.name.split(' ');
+    const firstName = nameParts[0] || '';
+    const lastName = nameParts.slice(1).join(' ') || '';
+
+    setVisitorForm({
+      firstName,
+      lastName,
+      mobile: visitor.phone || '',
+      email: visitor.email || '',
+      organisation: visitor.company || '',
+      visitorType: visitor.host_name || 'Parent', // storing type in host_name based on add logic
+      purpose: '', // Purpose is usually new for each visit
+    });
+    setSearchTerm('');
+    setShowAddVisitorModal(true);
+  };
+
+  // Fetch visitors on mount
+  useEffect(() => {
+    fetchVisitors();
+  }, []);
+
+  const fetchVisitors = async () => {
+    try {
+      setLoading(true);
+      const data = await getVisitors();
+      setVisitors(data);
+    } catch (error) {
+      console.error('Error fetching visitors:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCheckout = async (visitorId) => {
+    try {
+      const updatedVisitor = await checkoutVisitor(visitorId);
+      setVisitors(
+        visitors.map((v) => (v.id === visitorId ? updatedVisitor : v))
+      );
+      alert('Visitor checked out successfully!');
+    } catch (error) {
+      console.error('Error checking out:', error);
+      alert('Error checking out: ' + (error.response?.data?.message || error.message));
+    }
+  };
+
+  const stats = [
+    { label: "Today's Visits", value: visitors.length, detail: 'Total check-ins today', icon: '📊' },
+    { label: 'Currently Inside', value: visitors.filter(v => !v.check_out_time).length, detail: 'Visitors not checked out', icon: '🚪' },
+    { label: 'Total Visitors', value: visitors.length, detail: 'Registered visitors', icon: '👥' },
+    { label: 'Checked Out', value: visitors.filter(v => v.check_out_time).length, detail: "Today's check-outs", icon: '✓' },
+  ];
+
+  const activeVisitors = visitors.filter(v => !v.check_out_time).map(visitor => ({
+    id: visitor.id,
+    name: visitor.name,
+    checkInTime: new Date(visitor.check_in_time).toLocaleTimeString(),
+    purpose: visitor.purpose,
+  }));
 
   if (loading) {
     return <div className="loading-state">Loading...</div>;
