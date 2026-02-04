@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getVisitors, downloadVisitorReport } from '../api/api';
+import AddVisitorModal from '../components/AddVisitorModal';
 import '../styles/VisitorLog.css';
 
 const VisitorLog = () => {
@@ -100,6 +101,8 @@ const VisitorLog = () => {
     return true; // 'all' tab
   });
 
+  const [showAddModal, setShowAddModal] = useState(false);
+
   return (
     <div className="visitor-log">
       {/* ... header ... */}
@@ -110,10 +113,30 @@ const VisitorLog = () => {
         </div>
 
         <div className="header-actions" style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
+          <button
+            className="add-visitor-btn"
+            onClick={() => setShowAddModal(true)}
+            style={{
+              backgroundColor: '#4f46e5',
+              color: 'white',
+              border: 'none',
+              padding: '0.5rem 1rem',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontWeight: 500,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem'
+            }}
+          >
+            <span>👤</span> Add Visitor
+          </button>
+
           <div className="download-controls" style={{
             display: 'flex', gap: '0.5rem', alignItems: 'center',
             backgroundColor: 'white', padding: '0.5rem', borderRadius: '8px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
           }}>
+            {/* ... (existing download controls) ... */}
             <span style={{ fontSize: '0.85rem', color: '#6b7280', fontWeight: 500 }}>Download:</span>
             <input
               type="date"
@@ -161,6 +184,7 @@ const VisitorLog = () => {
         </div>
       </div>
 
+      {/* ... (stats grid) ... */}
       <div className="stats-grid">
         <div className="stat-card">
           <div className="stat-icon">👥</div>
@@ -185,6 +209,7 @@ const VisitorLog = () => {
         </div>
       </div>
 
+      {/* ... (filter tabs) ... */}
       <div className="visitor-filter">
         <button
           className={`filter-tab ${activeTab === 'all' ? 'active' : ''}`}
@@ -206,6 +231,7 @@ const VisitorLog = () => {
         </button>
       </div>
 
+      {/* ... (table section) ... */}
       <div className="visitor-table-container">
         <div className="section-header">
           <h2>{activeTab === 'all' ? 'All Visitors' : activeTab === 'checkin' ? 'Checked In Visitors' : 'Checked Out Visitors'}</h2>
@@ -252,6 +278,20 @@ const VisitorLog = () => {
           </tbody>
         </table>
       </div>
+
+      {showAddModal && (
+        <AddVisitorModal
+          onClose={() => setShowAddModal(false)}
+          onVisitorAdded={(newVisitor) => {
+            // If the new visitor matches the currently selected date (today), add to list
+            const today = new Date().toISOString().split('T')[0];
+            if (selectedDate === today) {
+              setVisitors([newVisitor, ...visitors]);
+            }
+            setShowAddModal(false);
+          }}
+        />
+      )}
     </div>
   );
 };
