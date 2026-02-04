@@ -203,12 +203,12 @@ def init_db():
     
     # Run comprehensive seeder if users are empty (first run)
     if count == 0:
-        print("INFO: Database appears empty. Running comprehensive seed data...")
+        print("INFO: Database appears empty. Running initial user seed...")
         try:
             # We import here to avoid circular dependencies at top level if any
             from seed_test_data import seed_test_data
             seed_test_data()
-            print("SUCCESS: Seeded test users and visitors")
+            print("SUCCESS: Seeded initial users")
         except Exception as e:
             print(f"ERROR: Failed to run seeder: {e}")
 
