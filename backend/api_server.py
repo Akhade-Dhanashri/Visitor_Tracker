@@ -37,14 +37,14 @@ app = Flask(__name__)
 CORS(app, resources={r"/api/*": {"origins": "*"}})
 
 # Database configuration
-# Database configuration
 DB_FILE = os.getenv('DB_FILE', 'api_server.db')
-# Support both standard naming and the specific case-sensitive typo user made
-DATABASE_URL = os.getenv('DATABASE_URL') or os.getenv('Database_URL')
 
 def get_db_connection():
     """Get database connection (Strict PostgreSQL Only)"""
-    if not DATABASE_URL:
+    # Resolve URL at runtime to ensure latest Env Vars are picked up
+    db_url = os.getenv('DATABASE_URL') or os.getenv('Database_URL')
+    
+    if not db_url:
         # Halt execution if NO DB URL is present
         raise RuntimeError("CRITICAL ERROR: DATABASE_URL environment variable is not set. Application cannot start without a PostgreSQL database (SQLite fallback disabled to prevent data loss).")
         
@@ -53,7 +53,7 @@ def get_db_connection():
         raise RuntimeError("CRITICAL ERROR: psycopg2 driver not installed. Cannot connect to PostgreSQL.")
 
     try:
-        conn = psycopg2.connect(DATABASE_URL)
+        conn = psycopg2.connect(db_url)
         return conn
     except Exception as e:
         print(f"CRITICAL ERROR: Failed to connect to PostgreSQL: {e}")
@@ -1079,6 +1079,16 @@ def index():
             "GET /api/health": "Health check"
         }
     }), 200
+
+# Debug endpoint to force init (since startup init might fail if env vars aren't ready)
+@app.route("/api/debug/init", methods=["GET"])
+def debug_init():
+    """GET /api/debug/init - Force database initialization"""
+    try:
+        init_db()
+        return jsonify({"message": "Database initialized successfully (Tables created/verified)"}), 200
+    except Exception as e:
+        return jsonify({"error": f"Initialization failed: {str(e)}"}), 500
 
 # Initialize database on startup (for both local and production Gunicorn)
 print("Initializing database...")
