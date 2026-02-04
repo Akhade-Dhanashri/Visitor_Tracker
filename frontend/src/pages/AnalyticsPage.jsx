@@ -29,13 +29,13 @@ const Analytics = () => {
     const startDate = new Date();
 
     if (timePeriod === 'daily') {
-      startDate.setHours(0, 0, 0, 0); // Start of today
+      startDate.setDate(now.getDate() - 30); // Last 30 Days
     } else if (timePeriod === 'weekly') {
       startDate.setDate(now.getDate() - 7); // Last 7 days
     } else if (timePeriod === 'monthly') {
-      startDate.setMonth(now.getMonth() - 1); // Last 30 days (approx)
+      startDate.setMonth(now.getMonth() - 12); // Last 12 Months
     } else if (timePeriod === 'yearly') {
-      startDate.setFullYear(now.getFullYear() - 1); // Last 12 months
+      startDate.setFullYear(now.getFullYear() - 5); // Last 5 Years
     } else {
       startDate.setTime(0); // All time
     }
@@ -57,13 +57,13 @@ const Analytics = () => {
     let generateKeys = () => []; // Default empty
 
     if (timePeriod === 'daily') {
-      // Hourly breakdown
-      formatKey = (date) => `${date.getHours().toString().padStart(2, '0')}:00`;
-      labelFormat = (key) => key;
+      // Daily breakdown (Last 30 Days)
       generateKeys = () => {
         const keys = [];
-        for (let i = 0; i < 24; i++) {
-          keys.push(`${i.toString().padStart(2, '0')}:00`);
+        for (let i = 29; i >= 0; i--) {
+          const d = new Date();
+          d.setDate(now.getDate() - i);
+          keys.push(formatKey(d));
         }
         return keys;
       };
@@ -79,18 +79,7 @@ const Analytics = () => {
         return keys;
       };
     } else if (timePeriod === 'monthly') {
-      // Daily breakdown (last 30 days)
-      generateKeys = () => {
-        const keys = [];
-        for (let i = 29; i >= 0; i--) {
-          const d = new Date();
-          d.setDate(now.getDate() - i);
-          keys.push(formatKey(d));
-        }
-        return keys;
-      };
-    } else if (timePeriod === 'yearly') {
-      // Monthly breakdown
+      // Monthly breakdown (Last 12 Months)
       formatKey = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
       labelFormat = (date_str) => new Date(date_str + '-01').toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
       generateKeys = () => {
@@ -102,13 +91,24 @@ const Analytics = () => {
         }
         return keys;
       };
+    } else if (timePeriod === 'yearly') {
+      // Yearly breakdown (Last 5 Years)
+      formatKey = (date) => `${date.getFullYear()}`;
+      labelFormat = (date_str) => date_str;
+      generateKeys = () => {
+        const keys = [];
+        for (let i = 4; i >= 0; i--) {
+          const d = new Date();
+          d.setFullYear(now.getFullYear() - i);
+          keys.push(formatKey(d));
+        }
+        return keys;
+      };
     } else if (timePeriod === 'alltime') {
       formatKey = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
       labelFormat = (date_str) => new Date(date_str + '-01').toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
       generateKeys = () => {
         if (filteredVisitors.length === 0) return [];
-        const sorted = [...filteredVisitors].sort((a, b) => new Date(a.check_in_time) - new Date(b.check_in_time));
-        // Just return actual keys present for simplicity in all-time
         return [];
       };
     }
@@ -171,10 +171,10 @@ const Analytics = () => {
       : 0;
 
     let periodLabel = 'All time';
-    if (timePeriod === 'daily') periodLabel = 'Today';
+    if (timePeriod === 'daily') periodLabel = 'Last 30 days';
     if (timePeriod === 'weekly') periodLabel = 'Last 7 days';
-    if (timePeriod === 'monthly') periodLabel = 'Last 30 days';
-    if (timePeriod === 'yearly') periodLabel = 'Last 12 months';
+    if (timePeriod === 'monthly') periodLabel = 'Last 12 months';
+    if (timePeriod === 'yearly') periodLabel = 'Last 5 years';
 
     return [
       { label: 'Total Visits', value: totalVisits, detail: periodLabel },
