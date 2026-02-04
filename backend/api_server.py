@@ -322,7 +322,6 @@ def forgot_password():
         cursor = conn.cursor()
         execute_query(cursor, "SELECT id, name FROM users WHERE email = ?", (email,))
         user = cursor.fetchone()
-        conn.close()
         
         # Always return success (don't reveal if email exists - security best practice)
         if user:
@@ -343,6 +342,7 @@ def forgot_password():
                 print(f"Email sending error: {e}")
                 # Still return success to user/log the error
         
+        conn.close()
         return jsonify({"message": "If email exists, reset link has been sent"}), 200
         
     except Exception as e:
