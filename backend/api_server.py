@@ -583,6 +583,9 @@ def update_user(user_id):
         if 'status' in data:
             update_fields.append("status = ?")
             values.append(data['status'])
+        if 'password' in data and data['password']:
+            update_fields.append("password = ?")
+            values.append(data['password'])
 
         if not update_fields:
             conn.close()
