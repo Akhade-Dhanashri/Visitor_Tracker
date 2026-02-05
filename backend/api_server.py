@@ -93,7 +93,52 @@ SMTP_EMAIL = os.getenv('SMTP_EMAIL')
 SMTP_PASSWORD = os.getenv('SMTP_PASSWORD')
 
 if not SMTP_EMAIL or not SMTP_PASSWORD:
-    print("WARNING: Email credentials not set in .env file. Email sending will fail.")
+    print("WARNING: Email credentials not set in .env file. Email sending will be MOCKED.")
+
+def send_reset_email(to_email, user_name, reset_token):
+    """Send reset email (Mocked if no credentials)"""
+    reset_link = f"https://visitor-tracker-frontend.onrender.com/reset-password?token={reset_token}"
+    
+    if not SMTP_EMAIL or not SMTP_PASSWORD:
+        print(f"============================================")
+        print(f"MOCK EMAIL TO: {to_email}")
+        print(f"Subject: Password Reset Request")
+        print(f"Link: {reset_link}")
+        print(f"============================================")
+        return True
+
+    msg = MIMEMultipart()
+    msg['From'] = SMTP_EMAIL
+    msg['To'] = to_email
+    msg['Subject'] = "Password Reset Request"
+    
+    body = f"""
+    Hello {user_name},
+    
+    You have requested to reset your password.
+    Please click the link below to reset it:
+    
+    {reset_link}
+    
+    If you did not request this, please ignore this email.
+    
+    Link expires in 1 hour.
+    """
+    msg.attach(MIMEText(body, 'plain'))
+    
+    try:
+        server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
+        server.starttls()
+        server.login(SMTP_EMAIL, SMTP_PASSWORD)
+        text = msg.as_string()
+        server.sendmail(SMTP_EMAIL, to_email, text)
+        server.quit()
+        print(f"Email sent successfully to {to_email}")
+        return True
+    except Exception as e:
+        print(f"Failed to send email: {e}")
+        # Don't raise error, just log it so API doesn't crash
+        return False
 
 def init_db():
     """Initialize database tables"""
