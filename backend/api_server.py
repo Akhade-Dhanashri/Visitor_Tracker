@@ -90,14 +90,16 @@ def get_row_dict(row, cursor):
 SMTP_SERVER = os.getenv('SMTP_SERVER', 'smtp.gmail.com')
 SMTP_PORT = int(os.getenv('SMTP_PORT', 587))
 SMTP_EMAIL = os.getenv('SMTP_EMAIL')
-SMTP_PASSWORD = os.getenv('SMTP_PASSWORD')
+SMTP_PASSWORD = os.getenv('SMTP_PASSWORD', '').replace(' ', '')
 
 if not SMTP_EMAIL or not SMTP_PASSWORD:
     print("WARNING: Email credentials not set in .env file. Email sending will be MOCKED.")
 
 def send_reset_email(to_email, user_name, reset_token):
     """Send reset email (Mocked if no credentials)"""
-    reset_link = f"https://visitor-tracker-frontend.onrender.com/reset-password?token={reset_token}"
+    # Use HTTPS and strip trailing slash
+    base_url = os.getenv('FRONTEND_URL', 'https://visitor-tracker-frontend.onrender.com').rstrip('/')
+    reset_link = f"{base_url}/reset-password?token={reset_token}"
     
     if not SMTP_EMAIL or not SMTP_PASSWORD:
         print(f"============================================")
