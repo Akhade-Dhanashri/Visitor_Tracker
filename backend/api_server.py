@@ -163,6 +163,10 @@ def init_db():
         # Try to select the column to see if it exists
         execute_query(cursor, "SELECT reset_token FROM users LIMIT 1")
     except Exception:
+        # Column likely missing, so the previous query failed and Aborted the transaction.
+        # We MUST rollback the failed transaction before running ALTER TABLE.
+        conn.rollback()
+        
         # Column likely missing, add them
         print("INFO: Migrating database - adding reset_token columns")
         try:
