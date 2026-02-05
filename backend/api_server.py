@@ -98,6 +98,8 @@ if not SMTP_EMAIL or not SMTP_PASSWORD:
 def init_db():
     """Initialize database tables"""
     conn = get_db_connection()
+    # Rollback any stuck transactions from previous failed requests
+    conn.rollback()
     
     # Check if postgres
     # Since we enforce DATABASE_URL and psycopg2 in get_db_connection, 
