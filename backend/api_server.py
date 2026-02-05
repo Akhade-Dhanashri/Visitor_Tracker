@@ -127,7 +127,8 @@ def send_reset_email(to_email, user_name, reset_token):
     msg.attach(MIMEText(body, 'plain'))
     
     try:
-        server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
+        # Add timeout to prevent hanging (caused 502 errors)
+        server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT, timeout=5)
         server.starttls()
         server.login(SMTP_EMAIL, SMTP_PASSWORD)
         text = msg.as_string()
@@ -136,8 +137,13 @@ def send_reset_email(to_email, user_name, reset_token):
         print(f"Email sent successfully to {to_email}")
         return True
     except Exception as e:
-        print(f"Failed to send email: {e}")
-        # Don't raise error, just log it so API doesn't crash
+        print(f"Failed to send email (falling back to mock): {e}")
+        # Fallback: Print mock link so user can still access account
+        print(f"============================================")
+        print(f"FALLBACK MOCK EMAIL TO: {to_email}")
+        print(f"Subject: Password Reset Request")
+        print(f"Link: {reset_link}")
+        print(f"============================================")
         return False
 
 def init_db():
