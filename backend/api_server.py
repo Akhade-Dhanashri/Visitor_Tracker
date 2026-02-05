@@ -1092,6 +1092,48 @@ def debug_init():
     except Exception as e:
         return jsonify({"error": f"Initialization failed: {str(e)}"}), 500
 
+@app.route("/api/debug/seed", methods=["GET"])
+def debug_seed():
+    """GET /api/debug/seed - Add dummy visitor data for testing"""
+    try:
+        conn = get_db_connection()
+        conn.autocommit = True
+        cursor = conn.cursor()
+        
+        # Check if visitors exist
+        execute_query(cursor, "SELECT COUNT(*) FROM visitors")
+        if cursor.fetchone()[0] > 0:
+            return jsonify({"message": "Visitors already exist. Skipping seed."}), 200
+            
+        print("Seeding dummy visitors...")
+        purposes = ['Meeting', 'Delivery', 'Interview', 'Maintenance', 'Visit']
+        
+        # Generate 20 dummy visitors
+        for i in range(20):
+            days_ago = random.randint(0, 30)
+            check_in = datetime.now() - timedelta(days=days_ago, hours=random.randint(1, 4))
+            # Randomly checkout some
+            check_out = check_in + timedelta(hours=random.randint(1, 3)) if random.random() > 0.3 else None
+            
+            execute_query(cursor, """
+                INSERT INTO visitors (name, email, phone, purpose, check_in_time, check_out_time, host_name, company)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                f"Visitor {i+1}", 
+                f"visitor{i+1}@example.com", 
+                f"555-01{i:02d}", 
+                random.choice(purposes),
+                check_in,
+                check_out,
+                "Admin Host",
+                "Test Corp"
+            ))
+            
+        conn.close()
+        return jsonify({"message": "Seeded 20 test visitors successfully"}), 200
+    except Exception as e:
+        return jsonify({"error": f"Seeding failed: {str(e)}"}), 500
+
 # Initialize database on startup (for both local and production Gunicorn)
 print("Initializing database...")
 try:
