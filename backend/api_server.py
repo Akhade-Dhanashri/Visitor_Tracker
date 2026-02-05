@@ -501,50 +501,7 @@ def reset_password():
         print(f"Reset password error: {e}")
         return jsonify({"error": "Failed to reset password"}), 500
 
-def send_reset_email(to_email, user_name, reset_token):
-    """Send password reset email via Gmail SMTP"""
-    subject = "Password Reset - Rachana Visitor Tracker"
-    
-    # Create reset link
-    frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:5173')
-    reset_link = f"{frontend_url}/reset-password?token={reset_token}"
-    
-    body = f"""Hello {user_name},
 
-You requested a password reset for your Rachana Visitor Tracker account.
-
-Click the link below to reset your password:
-{reset_link}
-
-This link will expire in 1 hour.
-
-If you didn't request this, please ignore this email.
-
-Best regards,
-Rachana Team
-"""
-    
-    msg = MIMEMultipart()
-    msg['From'] = SMTP_EMAIL
-    msg['To'] = to_email
-    msg['Subject'] = subject
-    msg.attach(MIMEText(body, 'plain'))
-    
-    server = None
-    try:
-        server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
-        server.starttls()
-        server.login(SMTP_EMAIL, SMTP_PASSWORD)
-        server.send_message(msg)
-    except Exception as e:
-        print(f"SMTP Error: {e}")
-        raise e
-    finally:
-        if server:
-            try:
-                server.quit()
-            except:
-                pass
 
 # User endpoints
 @app.route("/api/users", methods=["GET"])
