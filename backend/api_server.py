@@ -118,8 +118,8 @@ def init_db():
             password TEXT NOT NULL,
             role TEXT DEFAULT 'security',
             status TEXT DEFAULT 'Active',
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
 
@@ -131,12 +131,12 @@ def init_db():
             email TEXT,
             phone TEXT,
             purpose TEXT NOT NULL,
-            check_in_time DATETIME DEFAULT CURRENT_TIMESTAMP,
-            check_out_time DATETIME,
+            check_in_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            check_out_time TIMESTAMP,
             host_name TEXT,
             company TEXT,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
 
@@ -165,7 +165,7 @@ def init_db():
         print("INFO: Migrating database - adding reset_token columns")
         try:
             execute_query(cursor, "ALTER TABLE users ADD COLUMN reset_token TEXT")
-            execute_query(cursor, "ALTER TABLE users ADD COLUMN reset_token_expiry DATETIME")
+            execute_query(cursor, "ALTER TABLE users ADD COLUMN reset_token_expiry TIMESTAMP")
         except Exception as e:
             print(f"WARNING: Database migration failed (columns might ensure exist): {e}")
 
