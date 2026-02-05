@@ -147,11 +147,11 @@ def init_db():
             organization_name TEXT DEFAULT 'Rachana Girls Hostel',
             email TEXT DEFAULT 'contact@rachana.org',
             phone TEXT DEFAULT '+91 22 1234 5678',
-            push_notifications BOOLEAN DEFAULT 0,
-            email_notifications BOOLEAN DEFAULT 0,
-            auto_checkout BOOLEAN DEFAULT 0,
-            require_email BOOLEAN DEFAULT 0,
-            require_organization BOOLEAN DEFAULT 0
+            push_notifications BOOLEAN DEFAULT FALSE,
+            email_notifications BOOLEAN DEFAULT FALSE,
+            auto_checkout BOOLEAN DEFAULT FALSE,
+            require_email BOOLEAN DEFAULT FALSE,
+            require_organization BOOLEAN DEFAULT FALSE
         )
     """)
     
