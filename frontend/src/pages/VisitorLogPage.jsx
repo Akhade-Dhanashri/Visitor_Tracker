@@ -13,6 +13,7 @@ const VisitorLog = () => {
   const [downloadStartDate, setDownloadStartDate] = useState('');
   const [downloadEndDate, setDownloadEndDate] = useState('');
   const [isExporting, setIsExporting] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
 
   // Fetch visitors on mount
   useEffect(() => {
@@ -23,7 +24,7 @@ const VisitorLog = () => {
     try {
       setLoading(true);
       const data = await getVisitors();
-      setVisitors(data);
+      setVisitors(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Error fetching visitors:', error);
     } finally {
@@ -101,7 +102,7 @@ const VisitorLog = () => {
     return true; // 'all' tab
   });
 
-  const [showAddModal, setShowAddModal] = useState(false);
+  // ... (moved to top)
 
   return (
     <div className="visitor-log">
