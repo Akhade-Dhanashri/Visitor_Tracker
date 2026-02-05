@@ -1136,6 +1136,25 @@ def debug_seed():
     except Exception as e:
         return jsonify({"error": f"Seeding failed: {str(e)}"}), 500
 
+@app.route("/api/debug/schema", methods=["GET"])
+def debug_schema():
+    """GET /api/debug/schema - Dump table columns"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Get users columns
+        execute_query(cursor, "SELECT * FROM users LIMIT 0")
+        if cursor.description:
+            user_cols = [desc[0] for desc in cursor.description]
+        else:
+            user_cols = ["Unknown"]
+            
+        conn.close()
+        return jsonify({"users_columns": user_cols}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 # Initialize database on startup (for both local and production Gunicorn)
 print("Initializing database...")
 try:
